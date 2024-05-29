@@ -1,0 +1,130 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.sql.*;
+
+public class MovieGenreRetrieverGUI {
+    private JFrame frame;
+    private JTextField movieName1Field;
+    private JTextField movieName2Field;
+
+    public MovieGenreRetrieverGUI() {
+        frame = new JFrame("Movie Genre Retriever");
+        frame.setSize(400, 200);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new GridLayout(3, 2));
+
+        JLabel movieName1Label = new JLabel("Movie 1:");
+        frame.add(movieName1Label);
+
+        movieName1Field = new JTextField();
+        frame.add(movieName1Field);
+
+        JLabel movieName2Label = new JLabel("Movie 2:");
+        frame.add(movieName2Label);
+
+        movieName2Field = new JTextField();
+        frame.add(movieName2Field);
+
+        JButton enterButton = new JButton("Enter");
+        enterButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                retrieveMovieDetails();
+            }
+        });
+        frame.add(enterButton);
+
+        JButton resetButton = new JButton("Reset");
+        resetButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                resetFields();
+            }
+        });
+        frame.add(resetButton);
+
+        frame.setVisible(true);
+    }
+
+    private void retrieveMovieDetails() {
+        String url = "jdbc:mysql://localhost:3306/movies";
+        String user = "root";
+        String password = "aadya sinha";
+
+        try (Connection connection = DriverManager.getConnection(url, user, password)) {
+            String movieName1 = movieName1Field.getText();
+            String movieName2 = movieName2Field.getText();
+
+            String query1 = "SELECT genre FROM movie_entries WHERE movie_name = ?";
+            PreparedStatement preparedStatement1 = connection.prepareStatement(query1);
+            preparedStatement1.setString(1, movieName1);
+            ResultSet resultSet1 = preparedStatement1.executeQuery();
+
+            String genre1 = null;
+            if (resultSet1.next()) {
+                genre1 = resultSet1.getString("genre");
+            }
+
+            String query2 = "SELECT genre FROM movie_entries WHERE movie_name = ?";
+            PreparedStatement preparedStatement2 = connection.prepareStatement(query2);
+            preparedStatement2.setString(1, movieName2);
+            ResultSet resultSet2 = preparedStatement2.executeQuery();
+
+            String genre2 = null;
+            if (resultSet2.next()) {
+                genre2 = resultSet2.getString("genre");
+            }
+
+            resultSet1.close();
+            preparedStatement1.close();
+            resultSet2.close();
+            preparedStatement2.close();
+
+            if (genre1 != null && genre2 != null) {
+                String query = "SELECT * FROM movie_entries WHERE genre NOT IN (?, ?) LIMIT 1";
+                PreparedStatement preparedStatement = connection.prepareStatement(query);
+                preparedStatement.setString(1, genre1);
+                preparedStatement.setString(2, genre2);
+
+                ResultSet resultSet = preparedStatement.executeQuery();
+                if (resultSet.next()) {
+                    String movieName = resultSet.getString("movie_name");
+                    String actorsName = resultSet.getString("actors_name");
+                    String directorName = resultSet.getString("director_name");
+                    String genre = resultSet.getString("genre");
+                    double ratings = resultSet.getDouble("ratings");
+
+                    String message = "Movie Name: " + movieName + "\nActors: " + actorsName +
+                            "\nDirector: " + directorName + "\nGenre: " + genre + "\nRatings: " + ratings;
+                    JOptionPane.showMessageDialog(frame, message);
+                } else {
+                    JOptionPane.showMessageDialog(frame, "No movie found with a genre other than the ones entered.");
+                }
+
+                resultSet.close();
+                preparedStatement.close();
+            } else {
+                JOptionPane.showMessageDialog(frame, "One or both of the movies not found.");
+            }
+
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage());
+        }
+    }
+
+    private void resetFields() {
+        movieName1Field.setText("");
+        movieName2Field.setText("");
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new MovieGenreRetrieverGUI();
+            }
+        });
+    }
+}
